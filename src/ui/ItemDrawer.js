@@ -1,14 +1,15 @@
 import './ui.css';
 import { gameEvents } from '../systems/events.js';
 
-const DRAG_START_THRESHOLD = 8; // px of vertical movement before a card press becomes a drag
+const DRAG_START_THRESHOLD = 8; // px of horizontal movement (toward the room) before a card press becomes a drag
 
 function label(category) {
   return category.charAt(0).toUpperCase() + category.slice(1);
 }
 
 /**
- * The bottom item drawer (DOM, not Phaser) that HouseScene mounts/unmounts.
+ * The furniture side panel (DOM, not Phaser) that HouseScene mounts/unmounts — docked to
+ * the right edge so it reads as a tool panel over the room rather than a separate page.
  * Dragging is implemented with Pointer Events rather than native HTML5 drag-and-drop,
  * since native DnD does not work reliably on touch devices.
  */
@@ -106,7 +107,7 @@ export class ItemDrawer {
 
     const onMove = (moveEvent) => {
       if (!this.dragging) {
-        if (Math.abs(moveEvent.clientY - startY) < DRAG_START_THRESHOLD) return;
+        if (Math.abs(moveEvent.clientX - startX) < DRAG_START_THRESHOLD) return;
         this._startDrag(item, spriteUrl, startX, startY);
       }
       moveEvent.preventDefault();
@@ -142,9 +143,9 @@ export class ItemDrawer {
 
   _endDrag(clientX, clientY) {
     const { item } = this.dragging;
-    const drawerTop = this.root.getBoundingClientRect().top;
+    const drawerLeft = this.root.getBoundingClientRect().left;
     this._cancelDrag();
-    if (clientY < drawerTop) {
+    if (clientX < drawerLeft) {
       gameEvents.emit('item-drop', { itemId: item.id, clientX, clientY });
     }
   }

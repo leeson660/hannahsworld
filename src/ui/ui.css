@@ -1,93 +1,102 @@
 .item-drawer {
-  position: absolute;
-  left: 0;
+  position: fixed;
+  top: 0;
   right: 0;
   bottom: 0;
+  width: min(240px, 60vw);
   display: flex;
   flex-direction: column;
   background: #fffaf5;
-  border-top: 2px solid #e9d8c8;
-  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+  border-left: 2px solid #e9d8c8;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
   font-family: sans-serif;
   transition: transform 0.25s ease;
+  padding-top: max(76px, calc(env(safe-area-inset-top) + 66px)); /* clear the DOM top bar */
+  padding-bottom: env(safe-area-inset-bottom);
 }
 
 .item-drawer--closed {
-  transform: translateY(100%);
+  transform: translateX(100%);
 }
 
 .item-drawer__toggle {
-  position: absolute;
+  position: fixed;
   right: 16px;
-  bottom: max(16px, env(safe-area-inset-bottom));
+  top: 50%;
+  transform: translateY(-50%);
   min-height: 44px;
-  padding: 10px 18px;
+  padding: 10px 16px;
   border: none;
   border-radius: 999px;
   background: #e67eb4;
   color: #fff;
   font-family: sans-serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 3px 0 #c15f93;
-  transition: bottom 0.25s ease;
+  transition: right 0.25s ease;
+  z-index: 600; /* stays above the panel's own edge so it still reads as a handle when open */
 }
 
 .item-drawer__toggle--open {
-  bottom: 150px;
+  right: min(256px, calc(60vw + 16px));
 }
 
 .item-drawer__tabs {
   display: flex;
   gap: 4px;
-  padding: 6px 8px 0;
+  padding: 0 8px 6px;
 }
 
 .item-drawer__tab {
   flex: 1 1 auto;
-  min-height: 44px;
+  min-height: 40px;
   border: none;
-  border-radius: 10px 10px 0 0;
+  border-radius: 8px;
   background: #f0e2d2;
   color: #6b4a1f;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .item-drawer__tab[aria-selected='true'] {
-  background: #fffaf5;
-  color: #e67eb4;
+  background: #e67eb4;
+  color: #fff;
 }
 
 .item-drawer__row {
   display: flex;
-  gap: 10px;
-  padding: 10px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  touch-action: pan-x;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
 .item-drawer__card {
   flex: 0 0 auto;
-  width: 76px;
+  width: 100%;
   min-height: 44px;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 10px;
+  padding: 4px;
+  border-radius: 8px;
   cursor: grab;
-  touch-action: pan-x;
+  touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
 }
 
 .item-drawer__card img {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 auto;
   object-fit: contain;
   border-radius: 8px;
   background: #fff;
@@ -96,10 +105,11 @@
 }
 
 .item-drawer__card span {
-  font-size: 11px;
+  font-size: 13px;
   color: #6b4a1f;
-  text-align: center;
-  line-height: 1.1;
+  text-align: left;
+  line-height: 1.2;
+  pointer-events: none;
 }
 
 .item-drawer__ghost {
@@ -107,7 +117,10 @@
   width: 64px;
   height: 64px;
   object-fit: contain;
-  pointer-events: none;
+  /* !important because index.html's "#ui-root > * { pointer-events: auto }" outranks this by
+     specificity otherwise — without it the ghost intercepts the pointer it's following and
+     the browser fires pointercancel the moment the hit-tested element changes mid-drag. */
+  pointer-events: none !important;
   opacity: 0.85;
   z-index: 1000;
   border-radius: 8px;

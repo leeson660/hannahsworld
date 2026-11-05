@@ -7,11 +7,18 @@ import { ItemDrawer } from '../ui/ItemDrawer.js';
 import { HouseTopBar } from '../ui/HouseTopBar.js';
 import { gameEvents } from '../systems/events.js';
 
-// The world is bigger than the screen so the camera can start zoomed into roughly one
-// room and pan to reveal the rest of the house (SPEC.md section 7's multi-room houses,
-// approximated here with one big image instead of separate room backgrounds). Tune this
+// The world is bigger than the screen so the camera can start zoomed into one whole room
+// and pan to reveal the rest of the house (SPEC.md section 7's multi-room houses,
+// approximated here with one big image instead of separate room backgrounds). Measured
+// against house_bg.png: each room column is ~24% of the image width, so zooming to
+// ~1/0.24 makes one room's width fill the screen (height slightly overflows/crops rather
+// than showing slivers of neighbouring rooms, since the room isn't exactly 16:9). Tune
 // once real per-room art replaces the placeholder cutaway image.
-const ROOM_ZOOM = 2;
+const ROOM_ZOOM = 4.1;
+
+// Centre of the left column's middle room (the bathroom) in house_bg.png, as a fraction
+// of the image's width/height — measured by eye, not pixel-exact.
+const INITIAL_FOCUS = { xFraction: 0.146, yFraction: 0.464 };
 
 /** The decorating engine: placeholder room + drag-and-drop furniture (SPEC.md section 8). */
 export class HouseScene extends Phaser.Scene {
@@ -64,7 +71,11 @@ export class HouseScene extends Phaser.Scene {
     }
 
     this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
-    this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
+    if (hasRealBackground) {
+      this.cameras.main.centerOn(this.worldWidth * INITIAL_FOCUS.xFraction, this.worldHeight * INITIAL_FOCUS.yFraction);
+    } else {
+      this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
+    }
 
     this.dragDrop = new DragDrop(
       this,
