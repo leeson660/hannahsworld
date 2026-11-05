@@ -1,5 +1,6 @@
 import './landing.css';
 import { gameEvents } from '../systems/events.js';
+import { enterFullscreenLandscape } from '../systems/fullscreen.js';
 
 /**
  * The public "front door" shown before the game itself. Sits above the canvas
@@ -24,6 +25,9 @@ export function mountLandingPage(game) {
 
   const enterButton = root.querySelector('.landing__enter');
   enterButton.addEventListener('click', () => {
+    // Must happen synchronously inside the click handler, before anything async,
+    // or the browser no longer counts this as a user gesture and rejects the request.
+    enterFullscreenLandscape();
     if (bootReady) {
       enter();
     } else {

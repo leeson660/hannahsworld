@@ -17,18 +17,35 @@ export class ItemDrawer {
     this.items = items;
     this.categories = [...new Set(items.map((i) => i.category))];
     this.activeCategory = this.categories[0];
+    this.isOpen = false;
+
     this.root = document.createElement('div');
-    this.root.className = 'item-drawer';
+    this.root.className = 'item-drawer item-drawer--closed';
     this._build();
+
+    this.toggleButton = document.createElement('button');
+    this.toggleButton.type = 'button';
+    this.toggleButton.className = 'item-drawer__toggle';
+    this.toggleButton.textContent = '+ Add Furniture';
+    this.toggleButton.addEventListener('click', () => this._setOpen(!this.isOpen));
   }
 
   mount() {
     document.getElementById('ui-root').appendChild(this.root);
+    document.getElementById('ui-root').appendChild(this.toggleButton);
   }
 
   unmount() {
     this._cancelDrag();
     this.root.remove();
+    this.toggleButton.remove();
+  }
+
+  _setOpen(open) {
+    this.isOpen = open;
+    this.root.classList.toggle('item-drawer--closed', !open);
+    this.toggleButton.classList.toggle('item-drawer__toggle--open', open);
+    this.toggleButton.textContent = open ? '✕ Close' : '+ Add Furniture';
   }
 
   _build() {

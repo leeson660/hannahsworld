@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { enterFullscreenLandscape } from '../systems/fullscreen.js';
 
 /**
  * v1 stub: the cutaway house image acts as a menu (SPEC.md section 7) with a single
@@ -41,6 +42,7 @@ export class MapScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     enterButton.on('pointerup', () => {
+      enterFullscreenLandscape();
       this.scene.start('House', { houseId: 'cottage_01' });
     });
   }
