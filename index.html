@@ -21,10 +21,20 @@
         width: 100%;
         height: 100%;
       }
+      /* DOM overlays (drawer, popups) live here, above the canvas. See SPEC.md section 7. */
+      #ui-root {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+      }
+      #ui-root > * {
+        pointer-events: auto;
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="ui-root"></div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

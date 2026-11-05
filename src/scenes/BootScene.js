@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { loadCatalog } from '../systems/Catalog.js';
+import { loadSave } from '../systems/SaveManager.js';
 
-/** Preloads shared UI assets, loads the save, then hands off to the menu. */
+/** Preloads shared UI assets, loads the catalog and save, then hands off to the menu. */
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('Boot');
@@ -22,7 +24,7 @@ export class BootScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    this.add
+    const statusText = this.add
       .text(cx, cy + 30, 'Loading...', {
         fontFamily: 'sans-serif',
         fontSize: '24px',
@@ -30,7 +32,12 @@ export class BootScene extends Phaser.Scene {
       })
       .setOrigin(0.5);
 
-    // TODO (M1+): await SaveManager load here before deciding where to send the player.
-    this.time.delayedCall(600, () => this.scene.start('Map'));
+    loadCatalog()
+      .then(() => loadSave())
+      .then(() => this.scene.start('Map'))
+      .catch((err) => {
+        console.error('Boot failed:', err);
+        statusText.setText('Something went wrong loading the game.\nPlease reload.');
+      });
   }
 }

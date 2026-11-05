@@ -1,0 +1,33 @@
+{
+  "economy": {
+    "startingCoins": 100,
+    "dailyGiftCoins": 25,
+    "dailyGiftCooldownHours": 24,
+    "adRewardCoins": 20,
+    "adCooldownSeconds": 60,
+    "coinsPerHouseVisit": { "min": 3, "max": 6 },
+    "coinPickupValue": 5
+  },
+  "houses": [
+    {
+      "id": "cottage_01",
+      "name": "Cozy Cottage",
+      "background": "assets/houses/room_cottage_01.png",
+      "price": 0,
+      "floorLine": 520,
+      "walkableArea": [40, 520, 1200, 180]
+    }
+  ],
+  "items": [
+    { "id": "sofa_red", "name": "Red Velvet Sofa", "category": "seating", "sprite": "assets/furniture/sofa_red.png", "price": 0, "tintable": true, "isSurface": false, "seatAnchor": { "x": 0.5, "y": 0.55 } },
+    { "id": "chair_blue", "name": "Blue Armless Chair", "category": "seating", "sprite": "assets/furniture/chair_blue.png", "price": 20, "tintable": true, "isSurface": false, "seatAnchor": { "x": 0.5, "y": 0.5 } },
+    { "id": "armchair_green", "name": "Green Armchair", "category": "seating", "sprite": "assets/furniture/armchair_green.png", "price": 35, "tintable": true, "isSurface": false, "seatAnchor": { "x": 0.5, "y": 0.5 } },
+    { "id": "table_wood", "name": "Wooden Table", "category": "tables", "sprite": "assets/furniture/table_wood.png", "price": 40, "tintable": false, "isSurface": true, "surfaceLine": 0.35 },
+    { "id": "coffee_table_white", "name": "White Coffee Table", "category": "tables", "sprite": "assets/furniture/coffee_table_white.png", "price": 25, "tintable": false, "isSurface": true, "surfaceLine": 0.3 },
+    { "id": "rug_round", "name": "Round Rug", "category": "decor", "sprite": "assets/furniture/rug_round.png", "price": 15, "tintable": true, "isSurface": false },
+    { "id": "lamp_floor", "name": "Floor Lamp", "category": "decor", "sprite": "assets/furniture/lamp_floor.png", "price": 20, "tintable": true, "isSurface": false },
+    { "id": "plant_pot", "name": "Potted Plant", "category": "decor", "sprite": "assets/furniture/plant_pot.png", "price": 10, "tintable": false, "isSurface": false },
+    { "id": "bookshelf", "name": "Bookshelf", "category": "decor", "sprite": "assets/furniture/bookshelf.png", "price": 50, "tintable": false, "isSurface": false },
+    { "id": "clock_wall", "name": "Wall Clock", "category": "decor", "sprite": "assets/furniture/clock_wall.png", "price": 12, "tintable": false, "isSurface": false }
+  ]
+}
