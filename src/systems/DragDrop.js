@@ -1,21 +1,22 @@
 import Phaser from 'phaser';
-import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
+import { GAME_WIDTH } from '../config.js';
 import { getItem } from './Catalog.js';
 
 const DISPLAY_SCALE = 0.35; // uniform scale from source pixels to scene pixels; keeps relative item sizes from the art intact
 const TINT_PRESETS = [null, 0xff9e9e, 0x9effa0, 0x9ec4ff, 0xffe28a, 0xe29eff];
 const ACTION_BUTTON_SIZE = 64;
 const ACTION_BUTTON_GAP = 10;
+const TOPBAR_CSS_HEIGHT = 70; // roughly topbar.css's footprint; keeps the action menu from rendering behind it
 
 /**
  * Owns every placed furniture item in a house: spawning, dragging, depth sort,
  * surfaces, the per-item action menu (flip/delete/tint/reorder) and one-step undo.
- * Also owns panning: the room can be bigger than the screen (SPEC.md's planned
- * multi-room houses, approximated for now by panning around one big image), so
- * dragging the empty background scrolls the camera instead of the world.
+ * Also owns panning: dragging the empty background scrolls the camera around the
+ * house image instead of moving anything, using the camera's real zoom (set
+ * per-room by HouseScene) rather than a fixed scale.
  */
 export class DragDrop {
-  constructor(scene, house, onChange, worldWidth = GAME_WIDTH, worldHeight = GAME_HEIGHT) {
+  constructor(scene, house, onChange, worldWidth, worldHeight) {
     this.scene = scene;
     this.house = house;
     this.onChange = onChange; // called with the serialised layout whenever it changes, for autosave
@@ -24,6 +25,7 @@ export class DragDrop {
     this.placed = new Set();
     this.selected = null;
     this.undoSnapshot = null;
+    this.onBackgroundPanEnd = null; // HouseScene hooks this to snap to the nearest room
 
     scene.input.dragDistanceThreshold = 10;
     this._buildActionMenu();
@@ -34,7 +36,8 @@ export class DragDrop {
       else this._onDrag(go, dragX, dragY);
     });
     scene.input.on('dragend', (_pointer, go) => {
-      if (go !== this.background) this._onDragEnd(go);
+      if (go === this.background) this.onBackgroundPanEnd?.();
+      else this._onDragEnd(go);
     });
   }
 
@@ -43,10 +46,10 @@ export class DragDrop {
     this._sortAllDepths();
   }
 
-  /** Called when an item is dropped in from the drawer, in scene-world coordinates. */
-  placeNewItem(itemId, worldX, worldY) {
+  /** Called when a sidebar item is tapped, in house-image (world) coordinates. */
+  placeNewItem(itemId, worldX, worldY, roomId) {
     this._snapshotForUndo();
-    const go = this._spawn({ itemId, x: worldX, y: worldY, flipX: false, tint: null, z: 0 });
+    const go = this._spawn({ itemId, x: worldX, y: worldY, flipX: false, tint: null, z: 0, roomId });
     this._clampToBounds(go);
     this._trySnapToSurface(go);
     this._sortAllDepths();
@@ -68,6 +71,7 @@ export class DragDrop {
   serializeLayout() {
     return [...this.placed].map((go) => ({
       itemId: go.itemId,
+      roomId: go.roomId ?? null,
       x: Math.round(go.x),
       y: Math.round(go.y),
       flipX: go.flipX,
@@ -85,6 +89,7 @@ export class DragDrop {
     go.setScale(DISPLAY_SCALE);
     go.setFlipX(!!placement.flipX);
     go.itemId = placement.itemId;
+    go.roomId = placement.roomId ?? null;
     go.isSurface = !!item.isSurface;
     go.surfaceLine = item.surfaceLine;
     go.tintable = !!item.tintable;
@@ -204,7 +209,7 @@ export class DragDrop {
     for (const go of this.placed) this._updateDepth(go);
   }
 
-  // --- selection and action menu -------------------------------------------
+  // --- selection, panning and action menu -----------------------------------
 
   _buildBackground() {
     const bg = this.scene.add.rectangle(this.worldWidth / 2, this.worldHeight / 2, this.worldWidth, this.worldHeight, 0x000000, 0);
@@ -225,8 +230,9 @@ export class DragDrop {
 
   _onBackgroundDrag(pointer) {
     const cam = this.scene.cameras.main;
-    cam.scrollX -= pointer.x - pointer.prevPosition.x;
-    cam.scrollY -= pointer.y - pointer.prevPosition.y;
+    // pointer.x/y are in canvas (screen) space; divide by zoom to get the equivalent world distance.
+    cam.scrollX -= (pointer.x - pointer.prevPosition.x) / cam.zoom;
+    cam.scrollY -= (pointer.y - pointer.prevPosition.y) / cam.zoom;
   }
 
   _buildActionMenu() {
@@ -260,11 +266,26 @@ export class DragDrop {
     const cam = this.scene.cameras.main;
     const count = this.buttonObjects.length;
     const totalWidth = count * ACTION_BUTTON_SIZE + (count - 1) * ACTION_BUTTON_GAP;
-    // Clamp within the camera's current view, not the whole (possibly much larger) world —
-    // the menu must stay on-screen wherever the player has panned to.
-    const leftEdge = Phaser.Math.Clamp(go.x - totalWidth / 2, cam.scrollX + 10, cam.scrollX + GAME_WIDTH - totalWidth - 10);
-    const menuX = leftEdge + ACTION_BUTTON_SIZE / 2; // container x aligns with button 0's local x = 0
-    const menuY = Phaser.Math.Clamp(go.y - go.displayHeight - 50, cam.scrollY + 50, cam.scrollY + GAME_HEIGHT - 50);
+
+    // The menu is scaled by 1/zoom so it stays a constant screen size whether the camera is
+    // zoomed into one room or all the way out to the whole house. That means its *world-space*
+    // footprint shrinks as zoom increases, which the clamp below has to account for. worldView
+    // is the camera's exact currently-visible world rectangle, so clamping against it (rather
+    // than fixed game-resolution bounds) keeps the menu on-screen at any pan position or zoom.
+    this.menu.setScale(1 / cam.zoom);
+    const view = cam.worldView;
+    const footprintW = totalWidth / cam.zoom;
+    const footprintH = ACTION_BUTTON_SIZE / cam.zoom;
+    const margin = 10 / cam.zoom;
+
+    // The DOM top bar sits on top of the canvas and isn't part of the camera's world at all,
+    // so the menu must stay clear of it the same way it stays clear of the world's edges.
+    const cssPerGameUnit = this.scene.scale.displaySize.width / GAME_WIDTH;
+    const topInset = TOPBAR_CSS_HEIGHT / cssPerGameUnit / cam.zoom;
+
+    const leftEdge = Phaser.Math.Clamp(go.x - footprintW / 2, view.x + margin, view.right - footprintW - margin);
+    const menuX = leftEdge + ACTION_BUTTON_SIZE / cam.zoom / 2; // container x aligns with button 0's local x = 0
+    const menuY = Phaser.Math.Clamp(go.y - go.displayHeight - 50 / cam.zoom, view.y + footprintH + topInset, view.bottom - footprintH);
     this.menu.setPosition(menuX, menuY);
 
     for (const { key, bg } of this.buttonObjects) {

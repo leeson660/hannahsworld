@@ -36,9 +36,9 @@ export class BootScene extends Phaser.Scene {
     loadCatalog()
       .then(() => loadSave())
       .then(() => {
-        // Start Map first: if the landing page is waiting on 'boot-ready' to jump
-        // straight to House, it must win the race and run after Map, not before it.
-        this.scene.start('Map');
+        // Start House first: the landing page waits on 'boot-ready' and otherwise does
+        // nothing scene-related itself, so this must run before that event fires.
+        this.scene.start('House', { houseId: 'cottage_01' });
         gameEvents.emit('boot-ready');
       })
       .catch((err) => {

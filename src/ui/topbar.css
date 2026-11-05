@@ -23,4 +23,15 @@
   font-size: 18px;
   font-weight: 600;
   cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.topbar__room-name {
+  align-self: center;
+  padding: 6px 14px;
+  border-radius: 10px;
+  background: #ffffffaa;
+  color: #4a3a0f;
+  font-size: 16px;
+  font-weight: 700;
 }

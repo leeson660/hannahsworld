@@ -73,7 +73,6 @@
   padding: 8px;
   overflow-y: auto;
   overflow-x: hidden;
-  touch-action: pan-y;
   -webkit-overflow-scrolling: touch;
 }
 
@@ -86,11 +85,17 @@
   align-items: center;
   gap: 10px;
   padding: 4px;
+  border: none;
   border-radius: 8px;
-  cursor: grab;
-  touch-action: pan-y;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.item-drawer__card:active {
+  background: #f0e2d2;
 }
 
 .item-drawer__card img {
@@ -110,19 +115,4 @@
   text-align: left;
   line-height: 1.2;
   pointer-events: none;
-}
-
-.item-drawer__ghost {
-  position: fixed;
-  width: 64px;
-  height: 64px;
-  object-fit: contain;
-  /* !important because index.html's "#ui-root > * { pointer-events: auto }" outranks this by
-     specificity otherwise — without it the ghost intercepts the pointer it's following and
-     the browser fires pointercancel the moment the hit-tested element changes mid-drag. */
-  pointer-events: none !important;
-  opacity: 0.85;
-  z-index: 1000;
-  border-radius: 8px;
-  transform: translate(-50%, -50%);
 }

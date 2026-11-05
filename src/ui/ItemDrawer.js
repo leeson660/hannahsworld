@@ -1,7 +1,4 @@
 import './ui.css';
-import { gameEvents } from '../systems/events.js';
-
-const DRAG_START_THRESHOLD = 8; // px of horizontal movement (toward the room) before a card press becomes a drag
 
 function label(category) {
   return category.charAt(0).toUpperCase() + category.slice(1);
@@ -10,12 +7,14 @@ function label(category) {
 /**
  * The furniture side panel (DOM, not Phaser) that HouseScene mounts/unmounts — docked to
  * the right edge so it reads as a tool panel over the room rather than a separate page.
- * Dragging is implemented with Pointer Events rather than native HTML5 drag-and-drop,
- * since native DnD does not work reliably on touch devices.
+ * Tapping an item adds it to whichever room is currently centred on screen (HouseScene
+ * decides where); the item is then draggable in the house scene like any other.
  */
 export class ItemDrawer {
-  constructor(items) {
+  constructor(items, onItemTap) {
     this.items = items;
+    this.onItemTap = onItemTap;
+    this.onToggle = null; // HouseScene hooks this to re-centre the current room when the panel opens/closes
     this.categories = [...new Set(items.map((i) => i.category))];
     this.activeCategory = this.categories[0];
     this.isOpen = false;
@@ -37,7 +36,6 @@ export class ItemDrawer {
   }
 
   unmount() {
-    this._cancelDrag();
     this.root.remove();
     this.toggleButton.remove();
   }
@@ -47,6 +45,7 @@ export class ItemDrawer {
     this.root.classList.toggle('item-drawer--closed', !open);
     this.toggleButton.classList.toggle('item-drawer__toggle--open', open);
     this.toggleButton.textContent = open ? '✕ Close' : '+ Add Furniture';
+    this.onToggle?.();
   }
 
   _build() {
@@ -82,7 +81,8 @@ export class ItemDrawer {
   _renderRow() {
     this.row.innerHTML = '';
     for (const item of this.items.filter((i) => i.category === this.activeCategory)) {
-      const card = document.createElement('div');
+      const card = document.createElement('button');
+      card.type = 'button';
       card.className = 'item-drawer__card';
 
       const img = document.createElement('img');
@@ -95,64 +95,8 @@ export class ItemDrawer {
 
       card.appendChild(img);
       card.appendChild(name);
-      card.addEventListener('pointerdown', (event) => this._onPointerDown(event, item));
+      card.addEventListener('click', () => this.onItemTap(item));
       this.row.appendChild(card);
     }
-  }
-
-  _onPointerDown(event, item) {
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const spriteUrl = `/${item.sprite}`;
-
-    const onMove = (moveEvent) => {
-      if (!this.dragging) {
-        if (Math.abs(moveEvent.clientX - startX) < DRAG_START_THRESHOLD) return;
-        this._startDrag(item, spriteUrl, startX, startY);
-      }
-      moveEvent.preventDefault();
-      this._updateGhost(moveEvent.clientX, moveEvent.clientY);
-    };
-
-    const onUp = (upEvent) => {
-      window.removeEventListener('pointermove', onMove);
-      window.removeEventListener('pointerup', onUp);
-      window.removeEventListener('pointercancel', onUp);
-      if (this.dragging) this._endDrag(upEvent.clientX, upEvent.clientY);
-    };
-
-    window.addEventListener('pointermove', onMove);
-    window.addEventListener('pointerup', onUp);
-    window.addEventListener('pointercancel', onUp);
-  }
-
-  _startDrag(item, spriteUrl, x, y) {
-    this.dragging = { item };
-    this.ghost = document.createElement('img');
-    this.ghost.className = 'item-drawer__ghost';
-    this.ghost.src = spriteUrl;
-    document.getElementById('ui-root').appendChild(this.ghost);
-    this._updateGhost(x, y);
-  }
-
-  _updateGhost(x, y) {
-    if (!this.ghost) return;
-    this.ghost.style.left = `${x}px`;
-    this.ghost.style.top = `${y}px`;
-  }
-
-  _endDrag(clientX, clientY) {
-    const { item } = this.dragging;
-    const drawerLeft = this.root.getBoundingClientRect().left;
-    this._cancelDrag();
-    if (clientX < drawerLeft) {
-      gameEvents.emit('item-drop', { itemId: item.id, clientX, clientY });
-    }
-  }
-
-  _cancelDrag() {
-    this.ghost?.remove();
-    this.ghost = null;
-    this.dragging = null;
   }
 }

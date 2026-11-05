@@ -14,8 +14,17 @@
       "name": "Cozy Cottage",
       "background": "assets/houses/house_bg.png",
       "price": 0,
-      "floorLine": 520,
-      "walkableArea": [40, 520, 1200, 180]
+      "rooms": [
+        { "id": "clock_room", "name": "Clock Room", "rect": { "x": 48, "y": 56, "w": 310, "h": 199 } },
+        { "id": "landing", "name": "Landing", "rect": { "x": 358, "y": 56, "w": 217, "h": 199 } },
+        { "id": "orange_room", "name": "Orange Room", "rect": { "x": 575, "y": 56, "w": 335, "h": 199 } },
+        { "id": "bathroom", "name": "Bathroom", "rect": { "x": 48, "y": 255, "w": 310, "h": 215 } },
+        { "id": "stairs_mid", "name": "Staircase", "rect": { "x": 358, "y": 255, "w": 217, "h": 215 } },
+        { "id": "blue_room", "name": "Blue Room", "rect": { "x": 575, "y": 255, "w": 335, "h": 215 } },
+        { "id": "living_room", "name": "Living Room", "rect": { "x": 48, "y": 470, "w": 310, "h": 250 } },
+        { "id": "stairs_bottom", "name": "Staircase", "rect": { "x": 358, "y": 470, "w": 217, "h": 250 } },
+        { "id": "kitchen", "name": "Kitchen", "rect": { "x": 575, "y": 470, "w": 335, "h": 250 } }
+      ]
     }
   ],
   "items": [

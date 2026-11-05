@@ -1,11 +1,10 @@
 import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from './config.js';
 import { BootScene } from './scenes/BootScene.js';
-import { MapScene } from './scenes/MapScene.js';
 import { HouseScene } from './scenes/HouseScene.js';
 import { mountLandingPage } from './ui/LandingPage.js';
 
-const game = new Phaser.Game({
+new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#fff1f7',
@@ -19,7 +18,7 @@ const game = new Phaser.Game({
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
   },
-  scene: [BootScene, MapScene, HouseScene],
+  scene: [BootScene, HouseScene],
 });
 
-mountLandingPage(game);
+mountLandingPage();
