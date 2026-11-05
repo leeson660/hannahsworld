@@ -26,16 +26,19 @@ export class DragDrop {
     this.selected = null;
     this.undoSnapshot = null;
     this.onBackgroundPanEnd = null; // HouseScene hooks this to snap to the nearest room
+    this.suspendDragging = false; // HouseScene sets this during a two-finger pinch so dragging doesn't fight it
 
     scene.input.dragDistanceThreshold = 10;
     this._buildActionMenu();
     this._buildBackground();
 
     scene.input.on('drag', (pointer, go, dragX, dragY) => {
+      if (this.suspendDragging) return;
       if (go === this.background) this._onBackgroundDrag(pointer);
       else this._onDrag(go, dragX, dragY);
     });
     scene.input.on('dragend', (_pointer, go) => {
+      if (this.suspendDragging) return;
       if (go === this.background) this.onBackgroundPanEnd?.();
       else this._onDragEnd(go);
     });

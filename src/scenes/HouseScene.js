@@ -92,6 +92,8 @@ export class HouseScene extends Phaser.Scene {
     const startRoom = this.rooms.find((r) => r.id === STARTING_ROOM_ID) ?? this.rooms[0];
     this._focusRoom(startRoom, false);
 
+    this._setupPinchZoom();
+
     this.events.once('shutdown', () => this._cleanup());
   }
 
@@ -166,6 +168,66 @@ export class HouseScene extends Phaser.Scene {
       }
     }
     this._focusRoom(nearest, true);
+  }
+
+  // --- pinch to zoom --------------------------------------------------------
+
+  /** Two-finger pinch, clamped between "fit the whole house" and "fit the smallest room". */
+  _setupPinchZoom() {
+    this.input.addPointer(1); // the default pointer pool only tracks one touch; this adds a second
+
+    this.minZoom = this._fitZoomFor(this.worldWidth, this.worldHeight);
+    this.maxZoom = Math.max(...this.rooms.map((r) => this._fitZoomFor(r.rect.w, r.rect.h)));
+    this._pinching = false;
+    this._pinchStartDist = 0;
+    this._pinchStartZoom = 1;
+
+    this.input.on('pointerdown', () => this._tryStartPinch());
+    this.input.on('pointermove', () => this._updatePinch());
+    this.input.on('pointerup', () => this._endPinchIfNeeded());
+    this.input.on('pointerupoutside', () => this._endPinchIfNeeded());
+  }
+
+  _activeTouchPointers() {
+    return [this.input.pointer1, this.input.pointer2].filter((p) => p.isDown);
+  }
+
+  _tryStartPinch() {
+    const pts = this._activeTouchPointers();
+    if (pts.length !== 2) return;
+    this._pinching = true;
+    this.dragDrop.suspendDragging = true; // a single-finger drag may already be mid-gesture; stop it fighting the pinch
+    this.dragDrop.deselect();
+    this._pinchStartDist = Math.max(1, Phaser.Math.Distance.Between(pts[0].x, pts[0].y, pts[1].x, pts[1].y));
+    this._pinchStartZoom = this.cameras.main.zoom;
+  }
+
+  _updatePinch() {
+    if (!this._pinching) return;
+    const pts = this._activeTouchPointers();
+    if (pts.length !== 2) return;
+
+    const cam = this.cameras.main;
+    const midX = (pts[0].x + pts[1].x) / 2;
+    const midY = (pts[0].y + pts[1].y) / 2;
+    const worldBefore = cam.getWorldPoint(midX, midY);
+
+    const dist = Phaser.Math.Distance.Between(pts[0].x, pts[0].y, pts[1].x, pts[1].y);
+    const newZoom = Phaser.Math.Clamp((dist / this._pinchStartDist) * this._pinchStartZoom, this.minZoom, this.maxZoom);
+    cam.setZoom(newZoom);
+
+    // Re-anchor on the pinch midpoint so the point between your fingers stays put on screen,
+    // instead of the zoom just happening around whatever the camera's centre was.
+    const worldAfter = cam.getWorldPoint(midX, midY);
+    cam.scrollX += worldBefore.x - worldAfter.x;
+    cam.scrollY += worldBefore.y - worldAfter.y;
+  }
+
+  _endPinchIfNeeded() {
+    if (this._pinching && this._activeTouchPointers().length < 2) {
+      this._pinching = false;
+      this.dragDrop.suspendDragging = false;
+    }
   }
 
   // --- adding items -------------------------------------------------------
