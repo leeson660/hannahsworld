@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GAME_WIDTH, GAME_HEIGHT } from '../config.js';
 import { loadCatalog } from '../systems/Catalog.js';
 import { loadSave } from '../systems/SaveManager.js';
+import { gameEvents } from '../systems/events.js';
 
 /** Preloads shared UI assets, loads the catalog and save, then hands off to the menu. */
 export class BootScene extends Phaser.Scene {
@@ -34,7 +35,12 @@ export class BootScene extends Phaser.Scene {
 
     loadCatalog()
       .then(() => loadSave())
-      .then(() => this.scene.start('Map'))
+      .then(() => {
+        // Start Map first: if the landing page is waiting on 'boot-ready' to jump
+        // straight to House, it must win the race and run after Map, not before it.
+        this.scene.start('Map');
+        gameEvents.emit('boot-ready');
+      })
       .catch((err) => {
         console.error('Boot failed:', err);
         statusText.setText('Something went wrong loading the game.\nPlease reload.');

@@ -31,6 +31,8 @@ export class HouseScene extends Phaser.Scene {
   }
 
   create() {
+    this.cameras.main.setBackgroundColor('#fff1f7'); // belt-and-suspenders: covers any gap if another scene is still active underneath
+
     const bgKey = `bg_${this.houseId}`;
     if (!this.bgLoadFailed && this.textures.exists(bgKey)) {
       this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
