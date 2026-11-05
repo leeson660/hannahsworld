@@ -4,7 +4,14 @@ import { getHouse, getItemsForHouse } from '../systems/Catalog.js';
 import { getHouseLayout, setHouseLayout } from '../systems/SaveManager.js';
 import { DragDrop } from '../systems/DragDrop.js';
 import { ItemDrawer } from '../ui/ItemDrawer.js';
+import { HouseTopBar } from '../ui/HouseTopBar.js';
 import { gameEvents } from '../systems/events.js';
+
+// The world is bigger than the screen so the camera can start zoomed into roughly one
+// room and pan to reveal the rest of the house (SPEC.md section 7's multi-room houses,
+// approximated here with one big image instead of separate room backgrounds). Tune this
+// once real per-room art replaces the placeholder cutaway image.
+const ROOM_ZOOM = 2;
 
 /** The decorating engine: placeholder room + drag-and-drop furniture (SPEC.md section 8). */
 export class HouseScene extends Phaser.Scene {
@@ -34,10 +41,15 @@ export class HouseScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor('#fff1f7'); // belt-and-suspenders: covers any gap if another scene is still active underneath
 
     const bgKey = `bg_${this.houseId}`;
-    if (!this.bgLoadFailed && this.textures.exists(bgKey)) {
-      this.add.image(GAME_WIDTH / 2, GAME_HEIGHT / 2, bgKey).setDisplaySize(GAME_WIDTH, GAME_HEIGHT);
+    const hasRealBackground = !this.bgLoadFailed && this.textures.exists(bgKey);
+    // No real per-room art yet (SPEC.md rule 4): the placeholder fallback stays screen-sized
+    // (nothing to pan across), only the real cutaway image gets the bigger pannable world.
+    this.worldWidth = hasRealBackground ? GAME_WIDTH * ROOM_ZOOM : GAME_WIDTH;
+    this.worldHeight = hasRealBackground ? GAME_HEIGHT * ROOM_ZOOM : GAME_HEIGHT;
+
+    if (hasRealBackground) {
+      this.add.image(this.worldWidth / 2, this.worldHeight / 2, bgKey).setDisplaySize(this.worldWidth, this.worldHeight);
     } else {
-      // No real room art yet at this.house.background — draw a labelled placeholder (SPEC.md rule 4).
       this.add
         .rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH - 80, GAME_HEIGHT - 160, 0xffd27f)
         .setStrokeStyle(4, 0xcc9a3f);
@@ -51,17 +63,34 @@ export class HouseScene extends Phaser.Scene {
         .setOrigin(0.5);
     }
 
-    this.dragDrop = new DragDrop(this, this.house, (layout) => setHouseLayout(this.houseId, layout));
+    this.cameras.main.setBounds(0, 0, this.worldWidth, this.worldHeight);
+    this.cameras.main.centerOn(this.worldWidth / 2, this.worldHeight / 2);
+
+    this.dragDrop = new DragDrop(
+      this,
+      this.house,
+      (layout) => setHouseLayout(this.houseId, layout),
+      this.worldWidth,
+      this.worldHeight,
+    );
     this.dragDrop.loadLayout(getHouseLayout(this.houseId));
 
-    this._buildTopBar();
+    this.topBar = new HouseTopBar({
+      onBack: () => this.scene.start('Map'),
+      onUndo: () => this.dragDrop.undo(),
+    });
+    this.topBar.mount();
 
     this.drawer = new ItemDrawer(this.items);
     this.drawer.mount();
 
     this._onItemDrop = ({ itemId, clientX, clientY }) => {
-      const worldX = this.scale.transformX(clientX);
-      const worldY = this.scale.transformY(clientY);
+      // transformX/Y give canvas-space coordinates; getWorldPoint accounts for the
+      // camera's current scroll so drops land where they visually appear, not where
+      // they'd be if the camera were still at its default (0, 0) position.
+      const canvasX = this.scale.transformX(clientX);
+      const canvasY = this.scale.transformY(clientY);
+      const { x: worldX, y: worldY } = this.cameras.main.getWorldPoint(canvasX, canvasY);
       this.dragDrop.placeNewItem(itemId, worldX, worldY);
     };
     gameEvents.on('item-drop', this._onItemDrop);
@@ -69,32 +98,9 @@ export class HouseScene extends Phaser.Scene {
     this.events.once('shutdown', () => this._cleanup());
   }
 
-  _buildTopBar() {
-    const backButton = this.add
-      .text(40, 30, '← Back', {
-        fontFamily: 'sans-serif',
-        fontSize: '24px',
-        color: '#4a3a0f',
-        backgroundColor: '#ffffffaa',
-        padding: { x: 12, y: 8 },
-      })
-      .setInteractive({ useHandCursor: true });
-    backButton.on('pointerup', () => this.scene.start('Map'));
-
-    const undoButton = this.add
-      .text(GAME_WIDTH - 160, 30, 'Undo', {
-        fontFamily: 'sans-serif',
-        fontSize: '24px',
-        color: '#4a3a0f',
-        backgroundColor: '#ffffffaa',
-        padding: { x: 12, y: 8 },
-      })
-      .setInteractive({ useHandCursor: true });
-    undoButton.on('pointerup', () => this.dragDrop.undo());
-  }
-
   _cleanup() {
     gameEvents.off('item-drop', this._onItemDrop);
     this.drawer.unmount();
+    this.topBar.unmount();
   }
 }

@@ -10,22 +10,32 @@ const ACTION_BUTTON_GAP = 10;
 /**
  * Owns every placed furniture item in a house: spawning, dragging, depth sort,
  * surfaces, the per-item action menu (flip/delete/tint/reorder) and one-step undo.
+ * Also owns panning: the room can be bigger than the screen (SPEC.md's planned
+ * multi-room houses, approximated for now by panning around one big image), so
+ * dragging the empty background scrolls the camera instead of the world.
  */
 export class DragDrop {
-  constructor(scene, house, onChange) {
+  constructor(scene, house, onChange, worldWidth = GAME_WIDTH, worldHeight = GAME_HEIGHT) {
     this.scene = scene;
     this.house = house;
     this.onChange = onChange; // called with the serialised layout whenever it changes, for autosave
+    this.worldWidth = worldWidth;
+    this.worldHeight = worldHeight;
     this.placed = new Set();
     this.selected = null;
     this.undoSnapshot = null;
 
     scene.input.dragDistanceThreshold = 10;
     this._buildActionMenu();
-    this._buildBackgroundDeselect();
+    this._buildBackground();
 
-    scene.input.on('drag', (_pointer, go, dragX, dragY) => this._onDrag(go, dragX, dragY));
-    scene.input.on('dragend', (_pointer, go) => this._onDragEnd(go));
+    scene.input.on('drag', (pointer, go, dragX, dragY) => {
+      if (go === this.background) this._onBackgroundDrag(pointer);
+      else this._onDrag(go, dragX, dragY);
+    });
+    scene.input.on('dragend', (_pointer, go) => {
+      if (go !== this.background) this._onDragEnd(go);
+    });
   }
 
   loadLayout(layout) {
@@ -136,8 +146,8 @@ export class DragDrop {
 
   _clampToBounds(go) {
     const halfW = go.displayWidth / 2;
-    go.x = Phaser.Math.Clamp(go.x, halfW, GAME_WIDTH - halfW);
-    go.y = Phaser.Math.Clamp(go.y, go.displayHeight, GAME_HEIGHT);
+    go.x = Phaser.Math.Clamp(go.x, halfW, this.worldWidth - halfW);
+    go.y = Phaser.Math.Clamp(go.y, go.displayHeight, this.worldHeight);
   }
 
   // --- surfaces ---------------------------------------------------------
@@ -196,11 +206,27 @@ export class DragDrop {
 
   // --- selection and action menu -------------------------------------------
 
-  _buildBackgroundDeselect() {
-    const bg = this.scene.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0);
+  _buildBackground() {
+    const bg = this.scene.add.rectangle(this.worldWidth / 2, this.worldHeight / 2, this.worldWidth, this.worldHeight, 0x000000, 0);
     bg.setDepth(-1);
-    bg.setInteractive();
-    bg.on('pointerdown', () => this.deselect());
+    bg.setInteractive({ draggable: true });
+    bg.on('pointerdown', () => {
+      bg._wasDragged = false;
+    });
+    bg.on('dragstart', () => {
+      bg._wasDragged = true;
+      this.deselect();
+    });
+    bg.on('pointerup', () => {
+      if (!bg._wasDragged) this.deselect();
+    });
+    this.background = bg;
+  }
+
+  _onBackgroundDrag(pointer) {
+    const cam = this.scene.cameras.main;
+    cam.scrollX -= pointer.x - pointer.prevPosition.x;
+    cam.scrollY -= pointer.y - pointer.prevPosition.y;
   }
 
   _buildActionMenu() {
@@ -231,11 +257,14 @@ export class DragDrop {
 
   _select(go) {
     this.selected = go;
+    const cam = this.scene.cameras.main;
     const count = this.buttonObjects.length;
     const totalWidth = count * ACTION_BUTTON_SIZE + (count - 1) * ACTION_BUTTON_GAP;
-    const leftEdge = Phaser.Math.Clamp(go.x - totalWidth / 2, 10, GAME_WIDTH - totalWidth - 10);
+    // Clamp within the camera's current view, not the whole (possibly much larger) world —
+    // the menu must stay on-screen wherever the player has panned to.
+    const leftEdge = Phaser.Math.Clamp(go.x - totalWidth / 2, cam.scrollX + 10, cam.scrollX + GAME_WIDTH - totalWidth - 10);
     const menuX = leftEdge + ACTION_BUTTON_SIZE / 2; // container x aligns with button 0's local x = 0
-    const menuY = Phaser.Math.Clamp(go.y - go.displayHeight - 50, 50, GAME_HEIGHT - 50);
+    const menuY = Phaser.Math.Clamp(go.y - go.displayHeight - 50, cam.scrollY + 50, cam.scrollY + GAME_HEIGHT - 50);
     this.menu.setPosition(menuX, menuY);
 
     for (const { key, bg } of this.buttonObjects) {

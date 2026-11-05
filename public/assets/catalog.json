@@ -12,7 +12,7 @@
     {
       "id": "cottage_01",
       "name": "Cozy Cottage",
-      "background": "assets/houses/room_cottage_01.png",
+      "background": "assets/houses/house_bg.png",
       "price": 0,
       "floorLine": 520,
       "walkableArea": [40, 520, 1200, 180]

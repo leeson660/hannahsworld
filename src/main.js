@@ -10,7 +10,11 @@ const game = new Phaser.Game({
   parent: 'game',
   backgroundColor: '#fff1f7',
   scale: {
-    mode: Phaser.Scale.FIT,
+    // ENVELOP fills the whole screen edge-to-edge on any phone aspect ratio (like CSS
+    // background-size: cover), instead of FIT's letterbox bars down the sides. The
+    // trade-off is a sliver of top/bottom cropping on very wide phones, which is why
+    // critical UI (top bar, drawer) lives in the DOM layer rather than the canvas.
+    mode: Phaser.Scale.ENVELOP,
     autoCenter: Phaser.Scale.CENTER_BOTH,
     width: GAME_WIDTH,
     height: GAME_HEIGHT,
